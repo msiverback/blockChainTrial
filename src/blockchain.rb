@@ -25,7 +25,7 @@ class Block
     @index = index
     @proof = proof
     @previousHash = previousHash
-    @timeStamp = Time.now
+    @timeStamp = Time.now.strftime('%s')
     @transactions = []
   end
     
@@ -56,7 +56,10 @@ class BlockChain
   end
     
   def newBlock(proof: 0, previousHash: 0)
+    return unless validateProof(@lastBlock.proof, proof)
     block = Block.new(index: @chain.length, proof: proof, previousHash: previousHash)
+    block.newTransaction(@currentTransactions)
+    @currentTransactions = []
     @chain.push(block)
     @lastBlock = @chain.last
   end
@@ -66,4 +69,11 @@ class BlockChain
     @currentTransactions.push(transaction)
     @chain.length + 1
   end
+
+  def validateProof(oldProof, newProof)
+    sha256 = Digest::SHA256.new
+    hexString = sha256.hexdigest (oldProof * newProof).to_s
+    return hexString =~ /dad$/
+  end
+  
 end

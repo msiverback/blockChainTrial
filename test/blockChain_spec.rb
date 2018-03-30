@@ -1,10 +1,10 @@
 require_relative '../src/blockchain.rb'
-
+require 'pp'
 describe Block do
 
   describe "#initialize" do
     context "given the input index, proof and previousHash, new " do
-      StartTime = Time.now
+      StartTime = Time.now.strftime('%s')
       block = Block.new(index: 0, proof: 1, previousHash: 2)
       it "shall initialize the block" do
 	expect(block.index).to eql(0)
@@ -12,7 +12,7 @@ describe Block do
   	expect(block.previousHash).to eql(2)
       end
       it "shall have a timeStamp between Start and now" do
-        expect(block.timeStamp).to be_between(StartTime, Time.now)
+        expect(block.timeStamp).to be_between(StartTime, Time.now.strftime('%s'))
       end	        
     end        
   end
@@ -71,13 +71,27 @@ describe BlockChain do
       end
     end
   end
+
+  describe "#validateProof" do
+    context "if the value x ends with hex value dad" do
+      it "shall return true" do
+        blockChain = BlockChain.new
+        newProof = 1
+        while not blockChain.validateProof(100, newProof) do
+          newProof += 1
+        end
+        expect(newProof).to eql (4104)
+      end
+    end
+  end
+
   describe "#newBlock" do
     context "a newBlock " do
       it "shall add a new block to the chain" do
         blockChain = BlockChain.new 
-        blockChain.newBlock(proof: 1000, previousHash: 10)
+        blockChain.newBlock(proof: 4104, previousHash: 10)
 	expect(blockChain.chain.length).to eql(2)
-        expect(blockChain.chain[1].proof).to eql(1000)
+        expect(blockChain.chain[1].proof).to eql(4104)
         expect(blockChain.chain[1].previousHash).to eql(10)
         expect(blockChain.chain[1].index).to eql(1)
       end
@@ -92,5 +106,25 @@ describe BlockChain do
       expect(nextIndex).to eql(2)
     end
   end
-  
+
+  describe "mining" do
+    context "you find the correct proof for the third block" do
+      blockChain = BlockChain.new
+      blockChain.newTransaction(sender: 0, recipient: "Martin", amount: 1)
+      blockChain.newBlock(proof: 4104, previousHash: blockChain.lastBlock.hash256)
+      newProof = 4105
+      it "shall add a third block" do        
+        while not blockChain.validateProof(4104, newProof) do
+          newProof += 1
+        end
+        blockChain.newTransaction(sender: 0, recipient: "Martin", amount: 1)
+        blockChain.newBlock(proof: newProof, previousHash: blockChain.lastBlock.hash256)
+        expect(blockChain.chain.length).to eql(3)
+        pp blockChain.chain
+      end
+      it "the second block hash shall match" do
+        expect(blockChain.lastBlock.previousHash).to eql (blockChain.chain[1].hash256)
+      end
+    end
+  end
 end
