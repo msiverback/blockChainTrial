@@ -1,10 +1,12 @@
 require_relative '../src/blockchain.rb'
 require 'pp'
+require 'date'
+
 describe Block do
 
   describe "#initialize" do
     context "given the input index, proof and previousHash, new " do
-      StartTime = Time.now.strftime('%s')
+      StartTime = DateTime.now.strftime('%!')
       block = Block.new(index: 0, proof: 1, previousHash: 2)
       it "shall initialize the block" do
 	expect(block.index).to eql(0)
@@ -12,7 +14,7 @@ describe Block do
   	expect(block.previousHash).to eql(2)
       end
       it "shall have a timeStamp between Start and now" do
-        expect(block.timeStamp).to be_between(StartTime, Time.now.strftime('%s'))
+        expect(block.timeStamp).to be_between(StartTime, DateTime.now.strftime('%Q'))
       end	        
     end        
   end
@@ -41,17 +43,38 @@ describe Block do
     end            
   end
     
-  describe "#hash256" do
+  describe "#sha256" do
     it "shall sort the block and return the hash (no real check)" do
       block = Block.new(index: 0, proof: 1, previousHash: 2)
-      hash = block.hash256
-      expect(block.hash256).to_not eql(0)
-      expect(block.hash256).to eql(hash)
+      hash = block.sha256
+      expect(block.sha256).to_not eql(0)
+      expect(block.sha256).to eql(hash)
     end
   end
 end
 
 describe BlockChain do
+  
+  def mineNextProof(blockChain, oldProof)
+    newProof = oldProof + 1
+    while not blockChain.validateProof(oldProof, newProof) do
+      newProof += 1
+    end
+    newProof
+  end
+
+  def getNewBlockChain(nofBlocks: 1)
+    names = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"]
+    blockChain = BlockChain.new
+    newProof = 100
+    0.upto(nofBlocks - 2) do |i|
+      blockChain.newTransaction(sender: 0, recipient: names[i], amount: 1)
+      newProof = mineNextProof(blockChain, newProof)
+      blockChain.newBlock(proof: newProof, previousHash: blockChain.lastBlock.sha256)
+    end
+    blockChain
+  end
+  
   describe "#initialize and lastblock" do
     context "a new block chain" do
       it "shall contain the genesis block" do
@@ -60,6 +83,7 @@ describe BlockChain do
       end
     end            
   end
+  
   describe "#chain" do
     blockChain = BlockChain.new
     context "chain call on new chain" do
@@ -76,10 +100,7 @@ describe BlockChain do
     context "if the value x ends with hex value dad" do
       it "shall return true" do
         blockChain = BlockChain.new
-        newProof = 1
-        while not blockChain.validateProof(100, newProof) do
-          newProof += 1
-        end
+        newProof = mineNextProof(blockChain, 100)
         expect(newProof).to eql (4104)
       end
     end
@@ -109,21 +130,38 @@ describe BlockChain do
 
   describe "mining" do
     context "you find the correct proof for the third block" do
-      blockChain = BlockChain.new
-      blockChain.newTransaction(sender: 0, recipient: "Martin", amount: 1)
-      blockChain.newBlock(proof: 4104, previousHash: blockChain.lastBlock.hash256)
-      newProof = 4105
-      it "shall add a third block" do        
-        while not blockChain.validateProof(4104, newProof) do
-          newProof += 1
-        end
-        blockChain.newTransaction(sender: 0, recipient: "Martin", amount: 1)
-        blockChain.newBlock(proof: newProof, previousHash: blockChain.lastBlock.hash256)
+      it "shall add that block and the previousHash shall be correct" do
+        blockChain = getNewBlockChain(nofBlocks: 3)
         expect(blockChain.chain.length).to eql(3)
-        pp blockChain.chain
+        expect(blockChain.lastBlock.previousHash).to eql (blockChain.chain[1].sha256)
       end
-      it "the second block hash shall match" do
-        expect(blockChain.lastBlock.previousHash).to eql (blockChain.chain[1].hash256)
+    end
+  end
+
+  describe "#validateChain" do
+    context "when examining a correct chain" do
+      it "shall return CORRECT_CHAIN" do
+        blockChain = getNewBlockChain(nofBlocks: 5)
+        expect(blockChain.validateChain).to eql(CORRECT_CHAIN)
+      end
+    end
+    context "when a block has been replaced (new time=>hash mismatch)" do
+      it "shall return ERRONEOUS_HASH" do
+        blockChain = getNewBlockChain(nofBlocks: 5)
+        sleep(0.1)
+        blockChain.chain[1] = Block.new(index: 1,
+                                        proof: 4104,
+                                        previousHash: blockChain.chain.first.sha256)
+        expect(blockChain.validateChain).to eql(ERRONEOUS_HASH)
+      end
+    end
+    context "when a block has an erroneous proof" do
+      it "shall return ERRONEOUS_PROOF" do
+        blockChain = getNewBlockChain(nofBlocks: 5)
+        blockChain.chain[4] = Block.new(index: 4,
+                                        proof: 4104,
+                                        previousHash: blockChain.chain[4].sha256)
+        expect(blockChain.validateChain).to eql(ERRONEOUS_PROOF)
       end
     end
   end

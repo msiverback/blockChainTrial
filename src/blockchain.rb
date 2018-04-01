@@ -1,6 +1,10 @@
 require 'json'
 require 'digest'
+require 'date'
 
+CORRECT_CHAIN = 0
+ERRONEOUS_HASH = 1
+ERRONEOUS_PROOF = 2
 class Transaction
 
   attr_reader :transaction
@@ -19,23 +23,23 @@ class Block
   attr_reader :proof
   attr_reader :previousHash
   attr_reader :timeStamp
-  attr_reader :transactions    
+  attr_reader :transactions
   
   def initialize(index: 0, proof: 0, previousHash: 0)
     @index = index
     @proof = proof
     @previousHash = previousHash
-    @timeStamp = Time.now.strftime('%s')
+    @timeStamp = DateTime.now.strftime('%Q')
     @transactions = []
+    @sha256 = Digest::SHA256.new
   end
     
   def newTransaction(transaction)
     @transactions.push(transaction)
   end
 
-  def hash256
-    sha256 = Digest::SHA256.new
-    sha256.hexdigest to_s_for_hash
+  def sha256
+    @sha256.hexdigest to_s_for_hash
   end
 
   private
@@ -74,6 +78,15 @@ class BlockChain
     sha256 = Digest::SHA256.new
     hexString = sha256.hexdigest (oldProof * newProof).to_s
     return hexString =~ /dad$/
+  end
+
+  def validateChain
+    @chain.each_index do |i|
+      next unless i > 0
+      return ERRONEOUS_PROOF unless validateProof(@chain[i-1].proof, @chain[i].proof)
+      return ERRONEOUS_HASH unless (@chain[i-1].sha256 == @chain[i].previousHash)
+    end
+    CORRECT_CHAIN
   end
   
 end
