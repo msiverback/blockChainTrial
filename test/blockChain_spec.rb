@@ -54,6 +54,7 @@ describe Block do
 end
 
 describe BlockChain do
+  Names = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"]
   
   def mineNextProof(blockChain, oldProof)
     newProof = oldProof + 1
@@ -63,14 +64,19 @@ describe BlockChain do
     newProof
   end
 
+  def addNewBlockToChain(index, oldProof, blockChain)
+    blockChain.newTransaction(sender: 0, recipient: Names[index], amount: 1)
+    newProof = mineNextProof(blockChain, oldProof)
+    blockChain.newBlock(proof: newProof, previousHash: blockChain.lastBlock.sha256)
+    newProof
+  end
+  
   def getNewBlockChain(nofBlocks: 1)
-    names = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"]
+    
     blockChain = BlockChain.new
     newProof = 100
     0.upto(nofBlocks - 2) do |i|
-      blockChain.newTransaction(sender: 0, recipient: names[i], amount: 1)
-      newProof = mineNextProof(blockChain, newProof)
-      blockChain.newBlock(proof: newProof, previousHash: blockChain.lastBlock.sha256)
+      newProof = addNewBlockToChain(i, newProof, blockChain)
     end
     blockChain
   end
@@ -160,8 +166,41 @@ describe BlockChain do
         blockChain = getNewBlockChain(nofBlocks: 5)
         blockChain.chain[4] = Block.new(index: 4,
                                         proof: 4104,
-                                        previousHash: blockChain.chain[4].sha256)
+                                        previousHash: blockChain.chain[3].sha256)
         expect(blockChain.validateChain).to eql(ERRONEOUS_PROOF)
+      end
+    end
+  end
+
+  describe "nodes" do
+    context "no matter how many times a node is added" do
+      it "shall only appear once in the node list" do
+        blockChain = getNewBlockChain(nofBlocks: 2)
+        expect(blockChain.nodes.length).to eql(1)
+        expect(blockChain.nodes.include?("127.0.0.1")).to eql(true)
+        blockChain.registerNode(address: "1.1.1.1")
+        expect(blockChain.nodes.length).to eql(2)
+        expect(blockChain.nodes.include?("1.1.1.1")).to eql(true)
+        blockChain.registerNode(address: "1.1.1.1")
+        expect(blockChain.nodes.length).to eql(2)
+        expect(blockChain.nodes.include?("1.1.1.1")).to eql(true)
+      end
+    end
+    context "when two block of the same chain differ" do
+      it "main block shall be updated to be authorative" do
+        blockChain = getNewBlockChain(nofBlocks: 4)
+        # cheat a little to get deep copy
+        blockChain2 = Marshal.load(Marshal.dump(blockChain))
+        addNewBlockToChain(blockChain.chain.length,
+                           blockChain.lastBlock.proof, blockChain)
+        blockChain.registerNode(address: "1.1.1.1", chain: blockChain2)        
+        expect(blockChain.resolveConflicts).to eql(false)
+        1.upto(2) do |i|
+          addNewBlockToChain(blockChain2.chain.length,
+                             blockChain2.lastBlock.proof, blockChain2)
+        end
+        expect(blockChain.resolveConflicts).to eql(true)
+        expect(blockChain.chain.length).to eql(blockChain2.chain.length)
       end
     end
   end

@@ -1,10 +1,12 @@
 require 'json'
 require 'digest'
 require 'date'
+require 'set'
 
 CORRECT_CHAIN = 0
 ERRONEOUS_HASH = 1
 ERRONEOUS_PROOF = 2
+
 class Transaction
 
   attr_reader :transaction
@@ -31,7 +33,7 @@ class Block
     @previousHash = previousHash
     @timeStamp = DateTime.now.strftime('%Q')
     @transactions = []
-    @sha256 = Digest::SHA256.new
+    
   end
     
   def newTransaction(transaction)
@@ -39,7 +41,8 @@ class Block
   end
 
   def sha256
-    @sha256.hexdigest to_s_for_hash
+    sha256 = Digest::SHA256.new    
+    sha256.hexdigest to_s_for_hash
   end
 
   private
@@ -52,11 +55,17 @@ class BlockChain
   attr_reader :lastBlock
   attr_reader :chain
   attr_reader :currentTransactions
+
+  def nodes
+    @fakingDistribution.keys
+  end
   
   def initialize
     @currentTransactions = []
     @chain = [Block.new(index: 0, proof: 100, previousHash: 1)]
     @lastBlock = @chain.last
+    @fakingDistribution = {}
+    @fakingDistribution["127.0.0.1"] = nil
   end
     
   def newBlock(proof: 0, previousHash: 0)
@@ -87,6 +96,24 @@ class BlockChain
       return ERRONEOUS_HASH unless (@chain[i-1].sha256 == @chain[i].previousHash)
     end
     CORRECT_CHAIN
+  end
+
+  def registerNode(address: "127.0.0.1", chain: nil)
+    @fakingDistribution[address] = chain
+  end
+
+  def resolveConflicts
+    @fakingDistribution.each_value do |node|
+      next if node == nil
+      next unless node.validateChain
+      if node.chain.length > @chain.length
+        @chain = node.chain
+        @lastBlock = @chain.last
+        @currentTransactions = node.currentTransactions
+        return true
+      end
+    end
+    false
   end
   
 end
