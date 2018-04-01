@@ -5,15 +5,15 @@ require 'date'
 describe Block do
 
   describe "#initialize" do
-    context "given the input index, proof and previousHash, new " do
+    context "when given the input index, proof and previousHash " do
       StartTime = DateTime.now.strftime('%!')
       block = Block.new(index: 0, proof: 1, previousHash: 2)
-      it "shall initialize the block" do
+      it "shall initialize a block" do
 	expect(block.index).to eql(0)
   	expect(block.proof).to eql(1)
   	expect(block.previousHash).to eql(2)
       end
-      it "shall have a timeStamp between Start and now" do
+      it "shall give timeStamp between Start and now" do
         expect(block.timeStamp).to be_between(StartTime, DateTime.now.strftime('%Q'))
       end	        
     end        
@@ -21,18 +21,16 @@ describe Block do
   
   describe "#newTransaction" do 
     block = Block.new(index: 0, proof: 1, previousHash: 2)
-    context "a new transaction" do
+    context "when a new transaction is added" do
       it "shall be stored in the block" do
         block.newTransaction(Transaction.new(sender: 3, recipient: 4, amount: 5))
         expect(block.transactions.length).to eql(1)
-      end
-      it "shall store the specified input" do
         expect(block.transactions.last.transaction[:sender]).to eql(3)
         expect(block.transactions.last.transaction[:recipient]).to eql(4)
         expect(block.transactions.last.transaction[:amount]).to eql(5)
       end
     end
-    context "a second transaction" do
+    context "when given a second transaction" do
       it "shall also be stored in the block" do
         block.newTransaction(Transaction.new(sender: 6, recipient: 7, amount: 8))
         expect(block.transactions.length).to eql(2)
@@ -44,18 +42,19 @@ describe Block do
   end
     
   describe "#sha256" do
-    it "shall sort the block and return the hash (no real check)" do
+    it "shall return a stable hash" do
+      # I can be unlucky with the milliseconds but nevermind
       block = Block.new(index: 0, proof: 1, previousHash: 2)
-      hash = block.sha256
-      expect(block.sha256).to_not eql(0)
-      expect(block.sha256).to eql(hash)
+      block2 = Block.new(index: 0, proof: 1, previousHash: 2)
+      expect(block.sha256).to eql(block2.sha256)
     end
   end
 end
 
 describe BlockChain do
   Names = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"]
-  
+  #####################################################3
+  # some helper functions
   def mineNextProof(blockChain, oldProof)
     newProof = oldProof + 1
     while not blockChain.validateProof(oldProof, newProof) do
@@ -72,7 +71,6 @@ describe BlockChain do
   end
   
   def getNewBlockChain(nofBlocks: 1)
-    
     blockChain = BlockChain.new
     newProof = 100
     0.upto(nofBlocks - 2) do |i|
@@ -81,24 +79,26 @@ describe BlockChain do
     blockChain
   end
   
+  #####################################################3
+  # tests
   describe "#initialize and lastblock" do
     context "a new block chain" do
-      it "shall contain the genesis block" do
+      it "shall store genesis block in lastBlock" do
 	blockChain = BlockChain.new
-	expect(blockChain.lastBlock).to_not eql(nil)
+        expect(blockChain.lastBlock).to_not eql(nil)
+	expect(blockChain.lastBlock).to eql(blockChain.chain.first)
+        expect(blockChain.lastBlock.proof).to eql(GENESIS_PROOF)
       end
     end            
   end
   
   describe "#chain" do
     blockChain = BlockChain.new
-    context "chain call on new chain" do
-      it "shall return the genesis block" do
-	expect(blockChain.chain.length).to eql(1)
-        expect(blockChain.chain.first.proof).to eql(100)
-        expect(blockChain.chain.first.previousHash).to eql(1)
-        expect(blockChain.chain.first.index).to eql(0)
-      end
+    it "shall also store the genesis block" do
+      expect(blockChain.chain.length).to eql(1)
+      expect(blockChain.chain.first.proof).to eql(GENESIS_PROOF)
+      expect(blockChain.chain.first.previousHash).to eql(1)
+      expect(blockChain.chain.first.index).to eql(0)
     end
   end
 
@@ -106,22 +106,20 @@ describe BlockChain do
     context "if the value x ends with hex value dad" do
       it "shall return true" do
         blockChain = BlockChain.new
-        newProof = mineNextProof(blockChain, 100)
+        newProof = mineNextProof(blockChain, GENESIS_PROOF)
         expect(newProof).to eql (4104)
       end
     end
   end
 
   describe "#newBlock" do
-    context "a newBlock " do
-      it "shall add a new block to the chain" do
-        blockChain = BlockChain.new 
-        blockChain.newBlock(proof: 4104, previousHash: 10)
-	expect(blockChain.chain.length).to eql(2)
-        expect(blockChain.chain[1].proof).to eql(4104)
-        expect(blockChain.chain[1].previousHash).to eql(10)
-        expect(blockChain.chain[1].index).to eql(1)
-      end
+    it "shall add a new block to the chain" do
+      blockChain = BlockChain.new 
+      blockChain.newBlock(proof: 4104, previousHash: 10)
+      expect(blockChain.chain.length).to eql(2)
+      expect(blockChain.chain[1].proof).to eql(4104)
+      expect(blockChain.chain[1].previousHash).to eql(10)
+      expect(blockChain.chain[1].index).to eql(1)
     end
   end
   
@@ -135,7 +133,7 @@ describe BlockChain do
   end
 
   describe "mining" do
-    context "you find the correct proof for the third block" do
+    context "when given correct proof for the third block" do
       it "shall add that block and the previousHash shall be correct" do
         blockChain = getNewBlockChain(nofBlocks: 3)
         expect(blockChain.chain.length).to eql(3)

@@ -6,6 +6,7 @@ require 'set'
 CORRECT_CHAIN = 0
 ERRONEOUS_HASH = 1
 ERRONEOUS_PROOF = 2
+GENESIS_PROOF = 100
 
 class Transaction
 
@@ -33,7 +34,6 @@ class Block
     @previousHash = previousHash
     @timeStamp = DateTime.now.strftime('%Q')
     @transactions = []
-    
   end
     
   def newTransaction(transaction)
@@ -62,7 +62,7 @@ class BlockChain
   
   def initialize
     @currentTransactions = []
-    @chain = [Block.new(index: 0, proof: 100, previousHash: 1)]
+    @chain = [Block.new(index: 0, proof: GENESIS_PROOF, previousHash: 1)]
     @lastBlock = @chain.last
     @fakingDistribution = {}
     @fakingDistribution["127.0.0.1"] = nil
