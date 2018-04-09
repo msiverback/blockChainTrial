@@ -202,4 +202,14 @@ describe BlockChain do
       end
     end
   end
+
+  describe "#Wallet" do
+    context "when initialized" do
+      it "shall create a keypair" do
+        wallet = Wallet.new
+        expect(wallet.publicKey).to_not eq(nil)
+      end
+    end
+  end
+  
 end

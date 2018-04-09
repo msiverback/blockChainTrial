@@ -2,6 +2,7 @@ require 'json'
 require 'digest'
 require 'date'
 require 'set'
+require 'openssl'
 
 CORRECT_CHAIN = 0
 ERRONEOUS_HASH = 1
@@ -116,4 +117,13 @@ class BlockChain
     false
   end
   
+end
+
+class Wallet
+  attr_reader :publicKey
+
+  def initialize
+    @key = OpenSSL::PKey::RSA.new(1024)
+    @publicKey = @key.public_key
+  end
 end
