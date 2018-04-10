@@ -32,13 +32,15 @@ describe Block do
     end
     context "when given a second transaction" do
       it "shall also be stored in the block" do
-        block.newTransaction(Transaction.new(sender: 6, recipient: 7, amount: 8))
+        block.newTransaction(Transaction.new(sender: 6, recipient: 7, amount: 8, signature: 42))
         expect(block.transactions.length).to eql(2)
         expect(block.transactions.last.transaction[:sender]).to eql(6)
         expect(block.transactions.last.transaction[:recipient]).to eql(7)
-        expect(block.transactions.last.transaction[:amount]).to eql(8)                
+        expect(block.transactions.last.transaction[:amount]).to eql(8)
+        expect(block.transactions.last.transaction[:signature]).to eql(42)
+        expect(block.transactions.last.to_s).to eql("678")
       end
-    end            
+    end
   end
     
   describe "#sha256" do
@@ -49,6 +51,24 @@ describe Block do
       expect(block.sha256).to eql(block2.sha256)
     end
   end
+end
+describe Wallet do
+  context "when initialized" do
+    it "shall create a keypair" do
+      wallet = Wallet.new
+      expect(wallet.publicKey).to_not eq(nil)
+    end
+  end
+
+  context "anything encoded " do
+    it "shall be possible to decode" do
+      wallet = Wallet.new
+      byteString = "abacababacababacab"
+      encodedString = wallet.encode(byteString)
+      expect(wallet.publicKey.public_decrypt(encodedString)).to eq(byteString)
+    end
+  end
+  
 end
 
 describe BlockChain do
@@ -199,15 +219,6 @@ describe BlockChain do
         end
         expect(blockChain.resolveConflicts).to eql(true)
         expect(blockChain.chain.length).to eql(blockChain2.chain.length)
-      end
-    end
-  end
-
-  describe "#Wallet" do
-    context "when initialized" do
-      it "shall create a keypair" do
-        wallet = Wallet.new
-        expect(wallet.publicKey).to_not eq(nil)
       end
     end
   end

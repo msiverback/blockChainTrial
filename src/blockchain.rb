@@ -13,11 +13,17 @@ class Transaction
 
   attr_reader :transaction
   
-  def initialize(sender: 0, recipient: 0, amount: 0)
+  def initialize(sender: 0, recipient: 0, amount: 0, signature: 0)
     @transaction = Hash.new()
     @transaction[:sender] = sender
     @transaction[:recipient] = recipient
     @transaction[:amount] = amount
+    @transaction[:signature] = signature
+  end
+
+  def to_s
+    @transaction[:sender].to_s + @transaction[:recipient].to_s +
+      @transaction[:amount].to_s
   end
   
 end
@@ -126,4 +132,9 @@ class Wallet
     @key = OpenSSL::PKey::RSA.new(1024)
     @publicKey = @key.public_key
   end
+
+  def encode(byteString)
+    @key.private_encrypt(byteString)
+  end
+  
 end
